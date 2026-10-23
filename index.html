@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>バスゲッサー - BusGuessr</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: #121212;
+      color: #e0e0e0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 15px;
+    }
+    header {
+      width: 100%;
+      max-width: 600px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #333;
+      margin-bottom: 15px;
+    }
+    h1 { font-size: 1.3rem; color: #4caf50; letter-spacing: 1px; }
+    .score-board { font-size: 0.95rem; font-weight: bold; background: #222; padding: 6px 14px; border-radius: 20px; border: 1px solid #444; }
+    .container { width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 15px; }
+    
+    .img-container {
+      position: relative;
+      width: 100%;
+      background: #000;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid #333;
+      text-align: center;
+    }
+    .img-container img {
+      width: 100%;
+      max-height: 45vh;
+      object-fit: contain;
+      display: block;
+      cursor: zoom-in;
+    }
+    .img-hint-badge {
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      background: rgba(0,0,0,0.75);
+      font-size: 0.75rem;
+      padding: 4px 8px;
+      border-radius: 4px;
+      pointer-events: none;
+      color: #aaa;
+    }
+
+    .mode-switch {
+      display: flex;
+      background: #222;
+      border-radius: 8px;
+      padding: 3px;
+      gap: 4px;
+    }
+    .mode-btn {
+      flex: 1;
+      padding: 8px;
+      background: none;
+      border: none;
+      color: #888;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    .mode-btn.active {
+      background: #388e3c;
+      color: #fff;
+    }
+
+    .input-section { display: flex; flex-direction: column; gap: 10px; }
+    
+    .options-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .option-btn {
+      padding: 14px 10px;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      color: #fff;
+      font-size: 0.95rem;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .option-btn:hover { background: #333; border-color: #666; }
+
+    .text-input-group {
+      display: flex;
+      gap: 8px;
+    }
+    .text-input-group input {
+      flex: 1;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #444;
+      background: #2a2a2a;
+      color: #fff;
+      font-size: 1rem;
+    }
+    .submit-btn {
+      padding: 12px 20px;
+      background: #388e3c;
+      border: none;
+      color: white;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .clue-btn {
+      background: #222;
+      border: 1px dashed #555;
+      color: #bbb;
+      padding: 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    .clue-box {
+      background: #1b261b;
+      border: 1px solid #2e4d2e;
+      color: #a5d6a7;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      display: none;
+    }
+
+    .result-card {
+      background: #1e1e1e;
+      border-radius: 10px;
+      padding: 15px;
+      border: 1px solid #444;
+      display: none;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .result-header { font-size: 1.2rem; font-weight: bold; text-align: center; }
+    .correct { color: #4caf50; }
+    .incorrect { color: #f44336; }
+
+    .info-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+    .info-table td {
+      padding: 6px 8px;
+      border-bottom: 1px solid #333;
+    }
+    .info-table td.label { color: #888; width: 30%; }
+
+    .explanation-box {
+      background: #2a2a2a;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      border-left: 4px solid #4caf50;
+    }
+
+    .next-btn {
+      padding: 12px;
+      background: #1976d2;
+      border: none;
+      color: white;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+
+    /* 全画面画像モーダル */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(0,0,0,0.92);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+    .modal img {
+      max-width: 95vw;
+      max-height: 95vh;
+      object-fit: contain;
+    }
+
+    .final-score {
+      text-align: center;
+      padding: 20px;
+      background: #1e1e1e;
+      border-radius: 10px;
+      display: none;
+      flex-direction: column;
+      gap: 15px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>🚌 バスゲッサー</h1>
+    <div class="score-board" id="scoreBoard">Score: 0</div>
+  </header>
+
+  <div class="container">
+    <div class="img-container">
+      <img id="quizImage" src="" alt="問題画像" onclick="openModal()">
+      <div class="img-hint-badge">タップで拡大</div>
+    </div>
+
+    <div class="mode-switch">
+      <button class="mode-btn active" id="btn4Choice" onclick="switchMode('4choice')">4択モード</button>
+      <button class="mode-btn" id="btnTyping" onclick="switchMode('typing')">タイピングモード</button>
+    </div>
+
+    <div class="input-section" id="inputSection">
+      <div class="options-grid" id="optionsContainer"></div>
+
+      <div class="text-input-group" id="typingContainer" style="display: none;">
+        <input type="text" id="typeInput" placeholder="バス停名を入力..." onkeydown="if(event.key==='Enter') submitAnswer()">
+        <button class="submit-btn" onclick="submitAnswer()">回答</button>
+      </div>
+
+      <button class="clue-btn" onclick="toggleClue()">💡 ヒントを表示</button>
+      <div class="clue-box" id="clueBox"></div>
+    </div>
+
+    <div class="result-card" id="resultCard">
+      <div class="result-header" id="resultStatus"></div>
+      
+      <table class="info-table">
+        <tr><td class="label">正解バス停</td><td id="resName" style="font-weight: bold; color: #4caf50;"></td></tr>
+        <tr><td class="label">のりば</td><td id="resPlatform"></td></tr>
+        <tr><td class="label">所在地</td><td id="resLocation"></td></tr>
+        <tr><td class="label">事業者</td><td id="resOperator"></td></tr>
+      </table>
+
+      <div class="explanation-box" id="resExplanation"></div>
+
+      <button class="next-btn" onclick="nextQuestion()">次の問題へ ➔</button>
+    </div>
+
+    <div class="final-score" id="finalScoreCard">
+      <h2>全問終了！</h2>
+      <p id="finalScoreText" style="font-size: 1.2rem;"></p>
+      <button class="next-btn" onclick="restartGame()">最初から挑戦する</button>
+    </div>
+  </div>
+
+  <div class="modal" id="imageModal" onclick="closeModal()">
+    <img id="modalImg" src="" alt="拡大画像">
+  </div>
+
+  <script>
+    const quizData = [
+      {
+        id: 1,
+        qImage: 'Q.jpg',
+        aImage: 'A.jpg',
+        correctName: '宇治山田駅前',
+        platform: '1番のりば',
+        location: '三重県伊勢市岩渕1丁目',
+        operator: '三重交通バス',
+        options: ['伊勢市駅前', '宇治山田駅前', '外宮前', '内宮前'],
+        aliases: ['うじやまだえきまえ', '宇治山田駅', 'うじやまだ'],
+        clues: ['近鉄の主要駅前です', '伊勢神宮（外宮・内宮）へのアクセス拠点です'],
+        explanation: '伊勢神宮アクセスの重要拠点。レトロで荘厳な宇治山田駅のバスターミナルです。'
+      },
+      {
+        id: 2,
+        qImage: 'Q2.jpg',
+        aImage: 'A2.jpg',
+        correctName: '六番町',
+        platform: '名古屋市内',
+        location: '愛知県名古屋市熱田区四番１丁目１０',
+        operator: '三重交通バス',
+        options: ['四番町', '五番町', '六番町', '七番町'],
+        aliases: ['まさか名古屋市に三重交通', 'ろくばんちょう'],
+        clues: ['愛知県です', '名古屋市です'],
+        explanation: '三重交通は三重県だけではありません。'
+      },
+      {
+        id: 3,
+        qImage: 'Q3.jpg',
+        aImage: 'A3.jpg',
+        correctName: '御座港',
+        platform: '御座',
+        location: '三重県志摩市志摩町御座',
+        operator: '三重交通バス',
+        options: ['安乗港', '安楽島漁港', '一色', '御座港'],
+        aliases: ['ここで降りる人は釣りか寝過ごしたかのどちらかです', 'ござこう'],
+        clues: ['志摩営業所管轄です', '漁港です'],
+        explanation: 'おはようございます、終点ですよ？'
+      }
+    ];
+
+    let currentIdx = 0;
+    let score = 0;
+    let currentMode = '4choice';
+
+    function loadQuestion() {
+      const q = quizData[currentIdx];
+      document.getElementById('quizImage').src = q.qImage;
+      document.getElementById('modalImg').src = q.qImage;
+      document.getElementById('clueBox').style.display = 'none';
+      document.getElementById('clueBox').innerText = 'ヒント: ' + q.clues.join(' / ');
+      document.getElementById('resultCard').style.display = 'none';
+      document.getElementById('inputSection').style.display = 'flex';
+      document.getElementById('typeInput').value = '';
+
+      const optContainer = document.getElementById('optionsContainer');
+      optContainer.innerHTML = '';
+      q.options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.innerText = opt;
+        btn.onclick = () => checkAnswer(opt);
+        optContainer.appendChild(btn);
+      });
+
+      document.getElementById('scoreBoard').innerText = `問題 ${currentIdx + 1} / ${quizData.length} | Score: ${score}`;
+    }
+
+    function switchMode(mode) {
+      currentMode = mode;
+      document.getElementById('btn4Choice').classList.toggle('active', mode === '4choice');
+      document.getElementById('btnTyping').classList.toggle('active', mode === 'typing');
+      document.getElementById('optionsContainer').style.display = mode === '4choice' ? 'grid' : 'none';
+      document.getElementById('typingContainer').style.display = mode === 'typing' ? 'flex' : 'none';
+    }
+
+    function toggleClue() {
+      const box = document.getElementById('clueBox');
+      box.style.display = box.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function submitAnswer() {
+      const val = document.getElementById('typeInput').value.trim();
+      if (val) checkAnswer(val);
+    }
+
+    function checkAnswer(userAns) {
+      const q = quizData[currentIdx];
+      let isCorrect = false;
+
+      const normalizedUser = userAns.toLowerCase().replace(/\s+/g, '');
+      const normalizedCorrect = q.correctName.toLowerCase().replace(/\s+/g, '');
+
+      if (normalizedUser === normalizedCorrect) {
+        isCorrect = true;
+      } else if (q.aliases && q.aliases.some(a => a.toLowerCase().replace(/\s+/g, '') === normalizedUser)) {
+        isCorrect = true;
+      }
+
+      if (isCorrect) score += 100;
+
+      // 解答画像の表示
+      document.getElementById('quizImage').src = q.aImage;
+      document.getElementById('modalImg').src = q.aImage;
+
+      document.getElementById('inputSection').style.display = 'none';
+      const resCard = document.getElementById('resultCard');
+      resCard.style.display = 'flex';
+
+      const statusEl = document.getElementById('resultStatus');
+      statusEl.className = 'result-header ' + (isCorrect ? 'correct' : 'incorrect');
+      statusEl.innerText = isCorrect ? '🎉 正解！' : '❌ 残念...';
+
+      document.getElementById('resName').innerText = q.correctName;
+      document.getElementById('resPlatform').innerText = q.platform;
+      document.getElementById('resLocation').innerText = q.location;
+      document.getElementById('resOperator').innerText = q.operator;
+      document.getElementById('resExplanation').innerText = q.explanation;
+
+      document.getElementById('scoreBoard').innerText = `問題 ${currentIdx + 1} / ${quizData.length} | Score: ${score}`;
+    }
+
+    function nextQuestion() {
+      currentIdx++;
+      if (currentIdx < quizData.length) {
+        loadQuestion();
+      } else {
+        showFinalResult();
+      }
+    }
+
+    function showFinalResult() {
+      document.getElementById('inputSection').style.display = 'none';
+      document.getElementById('resultCard').style.display = 'none';
+      const finalCard = document.getElementById('finalScoreCard');
+      finalCard.style.display = 'flex';
+      document.getElementById('finalScoreText').innerText = `最終スコア: ${score} / ${quizData.length * 100} 点`;
+    }
+
+    function restartGame() {
+      currentIdx = 0;
+      score = 0;
+      document.getElementById('finalScoreCard').style.display = 'none';
+      loadQuestion();
+    }
+
+    function openModal() {
+      document.getElementById('imageModal').style.display = 'flex';
+    }
+
+    function closeModal() {
+      document.getElementById('imageModal').style.display = 'none';
+    }
+
+    // 初期化
+    loadQuestion();
+  </script>
+</body>
+</html>
